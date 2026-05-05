@@ -3,39 +3,37 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Soren Pigeau — Étudiant BUT Informatique à l'IUT Toulouse, à la recherche d'une alternance pour la rentrée 2026. Spécialité Data." />
+  <meta name="description" content="Soren Pigeau, étudiant BUT Informatique à l'IUT Toulouse, à la recherche d'une alternance pour la rentrée 2026. Spécialité Data." />
   <meta name="theme-color" content="#080808" />
-  <title>Soren Pigeau — Portfolio</title>
+  <title>Soren Pigeau · Portfolio</title>
 
   <!-- Polices -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
-  <!-- Importmap : Three.js (unpkg) + GSAP/Lenis/simplex-noise (esm.sh) -->
-  <!-- esm.sh résout proprement les exports map npm (gsap/ScrollTrigger, etc.) -->
+  <!-- GSAP & ScrollTrigger : scripts classiques (chargés en globaux,
+       beaucoup plus fiable que les ES modules CDN qui peuvent casser). -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+
+  <!-- Three.js + addons : seul vrai ES module nécessaire. -->
   <script type="importmap">
   {
     "imports": {
-      "three":              "https://unpkg.com/three@0.160.0/build/three.module.js",
-      "three/addons/":      "https://unpkg.com/three@0.160.0/examples/jsm/",
-      "gsap":               "https://esm.sh/gsap@3.12.5",
-      "gsap/ScrollTrigger": "https://esm.sh/gsap@3.12.5/ScrollTrigger",
-      "lenis":              "https://esm.sh/lenis@1.0.42",
-      "simplex-noise":      "https://esm.sh/simplex-noise@4.0.3"
+      "three":         "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
     }
   }
   </script>
 
   <!-- Sécurité : si le module JS plante (CDN bloqué, erreur shader, etc.),
-       le loader disparaît quand même au bout de 5s pour ne jamais bloquer
-       l'utilisateur sur la page de chargement. -->
+       le loader disparaît quand même au bout de 5s. -->
   <script>
     setTimeout(() => {
       const l = document.getElementById('loader');
       if (l && !l.classList.contains('is-hidden')) {
         l.classList.add('is-hidden');
-        // Affiche aussi les éléments du hero qui auraient dû être animés par GSAP
         document.querySelectorAll('.hero-title .char, .hero-title .period').forEach(el => {
           el.style.transform = 'translateY(0)';
         });
@@ -45,7 +43,12 @@
             el.style.transform = 'none';
           });
         });
-        console.warn('⚠️ Module JS lent ou en erreur — fallback de chargement déclenché. Ouvre la console pour voir l\'erreur.');
+        // Force aussi l'apparition des compétences et autres éléments cachés
+        document.querySelectorAll('.skills-list li, .reveal').forEach(el => {
+          el.style.opacity = '1';
+          el.style.transform = 'none';
+        });
+        console.warn('⚠️ Module JS lent ou en erreur. Ouvre la console pour voir le détail.');
       }
     }, 5000);
   </script>
@@ -83,7 +86,7 @@
 
     /* ---------- Reset & base ---------- */
     *, *::before, *::after { box-sizing: border-box; }
-    html { scroll-behavior: auto; -webkit-font-smoothing: antialiased; }
+    html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
     body {
       margin: 0;
       font-family: var(--font-body);
@@ -304,7 +307,7 @@
       font-family: var(--font-display);
       font-weight: 500;
       font-size: clamp(3.5rem, 11vw, 9rem);
-      line-height: 0.95;
+      line-height: 1.05;
       letter-spacing: -0.04em;
       margin: 0 0 1.5rem;
       color: var(--text);
@@ -312,7 +315,11 @@
     .hero-title .word {
       display: inline-block;
       overflow: hidden;
-      vertical-align: baseline;
+      vertical-align: top;
+      /* Important : padding-bottom pour laisser la place aux descendantes
+         (le bas du "g" de Pigeau) que overflow:hidden coupe sinon */
+      padding-bottom: 0.18em;
+      line-height: 1;
     }
     .hero-title .char {
       display: inline-block;
@@ -486,22 +493,8 @@
       border: 1px solid var(--glass-border);
       box-shadow: 0 24px 60px rgba(0,0,0,0.5);
     }
-    .photo-frame::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(135deg, var(--accent), transparent 50%);
-      opacity: 0.15;
-      z-index: 1;
-    }
-    .photo-frame img {
-      width: 100%; height: 100%;
-      object-fit: cover;
-      position: relative;
-      z-index: 0;
-    }
-    /* Silhouette SVG par défaut si pas de photo */
-    .photo-frame .silhouette {
+    /* Silhouette de fond : visible si photo absente, masquée par la photo si elle charge */
+    .photo-frame .photo-silhouette {
       position: absolute;
       inset: 0;
       width: 100%; height: 100%;
@@ -509,11 +502,32 @@
       color: var(--accent);
       opacity: 0.4;
     }
+    /* Photo : couvre toute la frame, au-dessus de la silhouette */
+    .photo-frame .photo-img {
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      z-index: 1;
+      transition: opacity 0.4s ease;
+    }
+    /* Si l'image plante, JS ajoute .no-photo qui masque l'<img> */
+    .photo-frame.no-photo .photo-img { display: none; }
+    /* Overlay accent : tinte légère au-dessus de la photo */
+    .photo-frame::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, var(--accent), transparent 50%);
+      opacity: 0.15;
+      z-index: 2;
+      pointer-events: none;
+    }
     .photo-frame .photo-label {
       position: absolute;
       bottom: 1rem;
       left: 1rem;
-      z-index: 2;
+      z-index: 3;
       font-family: var(--font-mono);
       font-size: 0.7rem;
       color: var(--text-muted);
@@ -1098,7 +1112,7 @@
       <canvas id="hero-canvas"></canvas>
 
       <div class="hero-inner">
-        <p class="badge"><span class="dot"></span> Disponible — alternance rentrée 2026</p>
+        <p class="badge"><span class="dot"></span> Disponible · alternance rentrée 2026</p>
 
         <h1 class="hero-title" aria-label="Soren Pigeau">
           <span class="word"><span class="char">S</span><span class="char">o</span><span class="char">r</span><span class="char">e</span><span class="char">n</span></span>
@@ -1106,8 +1120,8 @@
         </h1>
 
         <p class="hero-tagline">
-          Étudiant en <strong>BUT&nbsp;Informatique</strong> à l'IUT&nbsp;Toulouse, spécialité&nbsp;Data —
-          à la recherche d'une alternance pour ma 3<sup>e</sup>&nbsp;année.
+          Étudiant en <strong>BUT&nbsp;Informatique</strong> à l'IUT&nbsp;Toulouse, spécialité&nbsp;Data.
+          À la recherche d'une alternance pour ma 3<sup>e</sup>&nbsp;année.
         </p>
 
         <div class="hero-cta">
@@ -1116,7 +1130,7 @@
         </div>
 
         <div class="hero-meta">
-          <span>BUT&nbsp;3 — 2026/2027</span>
+          <span>BUT&nbsp;3, 2026/2027</span>
           <span class="sep" aria-hidden="true">/</span>
           <span>Toulouse / La Rochelle</span>
           <span class="sep" aria-hidden="true">/</span>
@@ -1130,19 +1144,26 @@
     <!-- ==================== À PROPOS ==================== -->
     <section id="about" class="section">
       <div class="section-head">
-        <span class="section-num">01 —</span>
+        <span class="section-num">01</span>
         <h2 class="section-title">À propos</h2>
       </div>
 
       <div class="about-grid">
         <div class="photo-frame" id="photo-frame">
           <!--
-            POUR METTRE TA PHOTO :
-            Remplace simplement ce bloc par <img src="photo.jpg" alt="Soren Pigeau" />
-            et place ton fichier 'photo.jpg' (carré ou portrait) à la racine du dépôt.
-            Sinon, la silhouette stylisée s'affiche.
+            ============================================================
+            POUR AFFICHER TA PHOTO :
+              1. Place ton fichier nommé EXACTEMENT "photo.jpg"
+                 à la racine du dépôt, à côté de index.html.
+              2. Format conseillé : portrait, 800x1000px, < 300 ko.
+              3. Si tu utilises un autre nom ou format (.png, .webp),
+                 modifie la valeur de src="photo.jpg" ci-dessous.
+              4. Si l'image n'est pas trouvée, la silhouette stylisée
+                 s'affiche automatiquement à la place.
+            ============================================================
           -->
-          <img src="photo.jpg" alt="Soren Pigeau" />
+          <img src="photo.jpg" alt="Soren Pigeau" class="photo-img" id="profile-photo" />
+          <svg class="photo-silhouette" viewBox="0 0 200 260" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <defs>
               <linearGradient id="silG" x1="0" y1="0" x2="1" y2="1">
                 <stop offset="0%" stop-color="currentColor" stop-opacity="0.9"/>
@@ -1161,14 +1182,14 @@
             je me forme au développement, à l'analyse de données et à l'administration système.
           </p>
           <p>
-            Curieux et méthodique, j'aime comprendre comment les choses fonctionnent en profondeur —
+            Curieux et méthodique, j'aime comprendre comment les choses fonctionnent en profondeur,
             du fonctionnement d'un algorithme jusqu'à l'architecture d'un réseau. Mes projets universitaires
             m'ont permis de toucher à des univers variés : développement bas niveau en C et Ada, exploitation
             de bases de données, mise en place d'infrastructures virtualisées.
           </p>
           <p>
             Aujourd'hui, je cherche une alternance pour ma troisième année afin de mettre en pratique mes
-            compétences sur des projets concrets — que ce soit en
+            compétences sur des projets concrets, que ce soit en
             <strong>développement</strong>, en <strong>data</strong>, en
             <strong>cybersécurité</strong> ou en <strong>réseau / système</strong>.
           </p>
@@ -1179,7 +1200,7 @@
     <!-- ==================== CE QUE JE RECHERCHE ==================== -->
     <section id="search" class="section">
       <div class="section-head">
-        <span class="section-num">02 —</span>
+        <span class="section-num">02</span>
         <h2 class="section-title">Ce que je recherche</h2>
       </div>
 
@@ -1219,7 +1240,7 @@
     <!-- ==================== PROJETS ==================== -->
     <section id="projects" class="section">
       <div class="section-head">
-        <span class="section-num">03 —</span>
+        <span class="section-num">03</span>
         <h2 class="section-title">Mes projets</h2>
       </div>
 
@@ -1256,7 +1277,7 @@
 
         <article class="project" data-tilt>
           <span class="project-tag">Algorithmique · Ada</span>
-          <h3>Comparaison d'algorithmes — Sudoku</h3>
+          <h3>Comparaison d'algorithmes Sudoku</h3>
           <p>Développement de deux algorithmes de résolution de Sudoku en Ada et analyse comparative de leurs performances pour identifier la méthode la plus optimale.</p>
           <ul class="project-stack"><li>Ada</li><li>Algorithmique</li></ul>
           <a class="project-link" href="https://github.com/Soren-Pigeau/projet-universitaire-Comparaison-d-algorithme-Premi-re-ann-e-" target="_blank" rel="noopener">Voir sur GitHub <span aria-hidden="true">→</span></a>
@@ -1288,7 +1309,7 @@
     <!-- ==================== COMPÉTENCES ==================== -->
     <section id="skills" class="section">
       <div class="section-head">
-        <span class="section-num">04 —</span>
+        <span class="section-num">04</span>
         <h2 class="section-title">Compétences</h2>
       </div>
 
@@ -1339,8 +1360,8 @@
         <div class="skills-col">
           <h3 class="skills-cat">Langues</h3>
           <ul class="skills-list">
-            <li>Français — natif</li>
-            <li>Anglais — professionnel</li>
+            <li>Français · natif</li>
+            <li>Anglais · professionnel</li>
           </ul>
         </div>
 
@@ -1350,7 +1371,7 @@
     <!-- ==================== EXPÉRIENCES ==================== -->
     <section id="experience" class="section">
       <div class="section-head">
-        <span class="section-num">05 —</span>
+        <span class="section-num">05</span>
         <h2 class="section-title">Expériences</h2>
       </div>
 
@@ -1363,7 +1384,7 @@
             <span class="period">Été</span>
           </div>
           <div class="timeline-body">
-            <h3>Cellule informatique — DGFiP La Rochelle</h3>
+            <h3>Cellule informatique, DGFiP La Rochelle</h3>
             <p class="timeline-role">Vacataire informatique · à venir, été 2026</p>
             <p>Mission au sein de la cellule informatique des Impôts de La Rochelle, dans la continuité de mes premières expériences à la DGFiP.</p>
           </div>
@@ -1375,7 +1396,7 @@
             <span class="period">En cours</span>
           </div>
           <div class="timeline-body">
-            <h3>Stagiaire data analyste — Alstom</h3>
+            <h3>Stagiaire data analyste · Alstom</h3>
             <p class="timeline-role">Équipe Éco-design · stage de BUT&nbsp;2</p>
             <p>Développement d'outils internes pour l'équipe Éco-design afin d'analyser et de valoriser les données environnementales liées aux produits ferroviaires : automatisation de traitements, mise en place de visualisations et de tableaux de bord pour faciliter la prise de décision.</p>
             <ul class="timeline-tags"><li>Data</li><li>Python</li><li>Éco-design</li></ul>
@@ -1388,7 +1409,7 @@
             <span class="period">Été</span>
           </div>
           <div class="timeline-body">
-            <h3>Vacataire — Service courrier, DGFiP</h3>
+            <h3>Vacataire au service courrier, DGFiP</h3>
             <p class="timeline-role">Direction générale des Finances publiques</p>
             <p>Job d'été au service courrier des Impôts : tri, traitement et suivi du courrier entrant et sortant. Première immersion dans l'environnement administratif et confirmation de mon goût pour les missions structurées.</p>
           </div>
@@ -1399,7 +1420,7 @@
     <!-- ==================== CONTACT ==================== -->
     <section id="contact" class="section section-contact">
       <div class="section-head">
-        <span class="section-num">06 —</span>
+        <span class="section-num">06</span>
         <h2 class="section-title">Contact</h2>
       </div>
 
@@ -1430,7 +1451,7 @@
 
   <footer class="footer">
     <div class="footer-inner">
-      <p>© <span id="year">2026</span> Soren Pigeau — Portfolio</p>
+      <p>© <span id="year">2026</span> Soren Pigeau · Portfolio</p>
       <p>Three.js · GSAP · Lenis · Hébergé sur GitHub Pages</p>
     </div>
   </footer>
@@ -1448,11 +1469,9 @@
     import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
     import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
     import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-    import { gsap } from 'gsap';
-    import ScrollTrigger from 'gsap/ScrollTrigger';
-    import Lenis from 'lenis';
-    import { createNoise3D } from 'simplex-noise';
 
+    // GSAP & ScrollTrigger sont chargés en globaux via <script src="...">
+    const { gsap, ScrollTrigger } = window;
     gsap.registerPlugin(ScrollTrigger);
 
     // ============================================================
@@ -1470,24 +1489,16 @@
     });
 
     // ============================================================
-    //          SMOOTH SCROLL — Lenis
+    //          SMOOTH SCROLL — natif via CSS (scroll-behavior)
+    //   Lenis a été retiré (instabilité d'import via CDN ESM).
+    //   Le smooth scroll natif est désormais activé sur <html>.
     // ============================================================
-    const lenis = new Lenis({
-      duration: 1.2,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-    });
-    lenis.on('scroll', ScrollTrigger.update);
-    gsap.ticker.add((time) => lenis.raf(time * 1000));
-    gsap.ticker.lagSmoothing(0);
-
-    // Liens d'ancre → Lenis
     document.querySelectorAll('a[href^="#"]').forEach((a) => {
       a.addEventListener('click', (e) => {
         const target = document.querySelector(a.getAttribute('href'));
         if (target) {
           e.preventDefault();
-          lenis.scrollTo(target, { offset: -40, duration: 1.4 });
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       });
     });
@@ -1966,14 +1977,28 @@
     });
 
     // ============================================================
-    //          PHOTO — fallback si l'image ne charge pas
-    //   Si tu ajoutes <img src="photo.jpg"> dans #photo-frame,
-    //   et qu'elle n'existe pas, la silhouette reste visible.
+    //          PHOTO — fallback automatique si l'image manque
+    //   Si "photo.jpg" existe à la racine : elle s'affiche.
+    //   Sinon : la silhouette SVG reste visible et la console
+    //   t'indique exactement quoi faire.
     // ============================================================
+    const photoImg = document.getElementById('profile-photo');
     const photoFrame = document.getElementById('photo-frame');
-    const photoImg = photoFrame?.querySelector('img');
-    if (photoImg) {
-      photoImg.addEventListener('error', () => { photoImg.style.display = 'none'; });
+    if (photoImg && photoFrame) {
+      photoImg.addEventListener('error', () => {
+        photoFrame.classList.add('no-photo');
+        console.warn(
+          '⚠️ photo.jpg introuvable. Pour afficher ta photo :\n' +
+          '   1. Place un fichier nommé EXACTEMENT "photo.jpg"\n' +
+          '      à côté de index.html.\n' +
+          '   2. Si ton fichier a un autre nom (Photo.jpg, photo.png, etc.),\n' +
+          '      modifie src="photo.jpg" dans le HTML.\n' +
+          '   La silhouette stylisée s\'affiche en attendant.'
+        );
+      });
+      photoImg.addEventListener('load', () => {
+        console.log('✓ Photo chargée');
+      });
     }
 
   </script>
