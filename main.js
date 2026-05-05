@@ -1,9 +1,8 @@
 /* =========================================================
    SOREN PIGEAU · PORTFOLIO 3D
    main.js · ES module
-   La 3D est totalement indépendante des autres librairies.
-   Si quoi que ce soit plante, le diagnostic en haut à droite
-   affiche le détail.
+   Hero 3D : nuage de petits points violets dérivant doucement
+   en arrière-plan, avec parallax 3D à la souris.
    ========================================================= */
 
 import * as THREE from 'three';
@@ -13,60 +12,19 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 /* =========================================================
-   PANNEAU DE DIAGNOSTIC
-   ========================================================= */
-const diag = (() => {
-  const el = document.getElementById('diag');
-  const rows = {};
-  const set = (key, ok, label) => {
-    if (!rows[key]) {
-      const row = document.createElement('div');
-      row.className = 'row';
-      const lbl = document.createElement('span');
-      const val = document.createElement('span');
-      row.append(lbl, val);
-      el.appendChild(row);
-      rows[key] = { lbl, val };
-    }
-    rows[key].lbl.textContent = label || key;
-    rows[key].val.textContent = ok ? '✓' : '✗';
-    rows[key].val.className = ok ? 'ok' : 'ko';
-  };
-  const error = (msg) => {
-    const e = document.createElement('div');
-    e.className = 'err';
-    e.textContent = msg;
-    el.appendChild(e);
-    el.classList.remove('hidden');
-  };
-  const hide = () => el.classList.add('hidden');
-  return { set, error, hide };
-})();
-
-// 1. Présence des libs externes
-diag.set('three', true, 'Three.js');
-diag.set('gsap', !!window.gsap, 'GSAP');
-
-// 2. WebGL disponible ?
-const testCanvas = document.createElement('canvas');
-const webgl = !!(testCanvas.getContext('webgl2') || testCanvas.getContext('webgl'));
-diag.set('webgl', webgl, 'WebGL');
-
-/* =========================================================
    ANNÉE FOOTER
    ========================================================= */
 const yearEl = document.getElementById('year');
 if (yearEl) yearEl.textContent = new Date().getFullYear();
 
 /* =========================================================
-   LOADER : on le fait disparaître dans tous les cas
+   LOADER
    ========================================================= */
 function hideLoader() {
   const l = document.getElementById('loader');
   if (l) l.classList.add('is-hidden');
 }
-// Au plus tard après 2s (au cas où Three.js serait lent)
-setTimeout(hideLoader, 2000);
+setTimeout(hideLoader, 1500);
 
 /* =========================================================
    SMOOTH SCROLL (natif via CSS) + interception des liens
@@ -109,7 +67,7 @@ const navObserver = new IntersectionObserver((entries) => {
 document.querySelectorAll('main section[id]').forEach((s) => navObserver.observe(s));
 
 /* =========================================================
-   REVEAL UNIVERSEL : IntersectionObserver natif (pas de GSAP)
+   REVEAL UNIVERSEL : IntersectionObserver natif
    ========================================================= */
 const revealTargets = document.querySelectorAll(
   '.section-head, .about-grid, .search-lead, .search-card, ' +
@@ -153,8 +111,6 @@ if (timeline && timelineProgress) {
   const updateTimeline = () => {
     const rect = timeline.getBoundingClientRect();
     const vh = window.innerHeight;
-    // Progression : commence quand le haut atteint 70% du viewport,
-    // termine quand le bas atteint 30%
     const start = vh * 0.7;
     const end = vh * 0.3;
     const total = rect.height + (start - end);
@@ -191,14 +147,13 @@ const photoFrame = document.getElementById('photo-frame');
 if (photoImg && photoFrame) {
   photoImg.addEventListener('error', () => {
     photoFrame.classList.add('no-photo');
-    console.warn('⚠️ photo.jpg introuvable — silhouette affichée à la place.');
+    console.warn('⚠️ Photo introuvable. Place ton fichier dans assets/photo.png');
   });
   photoImg.addEventListener('load', () => console.log('✓ Photo chargée'));
 }
 
 /* =========================================================
-   HERO : RÉVÉLATION DU TEXTE (sans dépendance GSAP)
-   On utilise simplement les classes CSS .is-visible
+   HERO : RÉVÉLATION DU TEXTE
    ========================================================= */
 function revealHeroText() {
   const chars = document.querySelectorAll('.hero-title .char');
@@ -216,20 +171,28 @@ function revealHeroText() {
 }
 
 /* =========================================================
-   HERO 3D · Three.js (entièrement isolé)
+   HERO 3D · Three.js
+   Nuage de petits points violets en arrière-plan.
+   Pas d'explosion, pas de morphing voyant : juste des points
+   qui dérivent doucement avec parallax à la souris.
    ========================================================= */
-let threeRunning = false;
 const canvas = document.getElementById('hero-canvas');
 
+const testCanvas = document.createElement('canvas');
+const webglOK = !!(testCanvas.getContext('webgl2') || testCanvas.getContext('webgl'));
+
 function initHero3D() {
-  if (!webgl) {
-    diag.error('WebGL non disponible sur cet appareil.');
+  if (!webglOK) {
+    if (canvas) canvas.style.display = 'none';
     return;
   }
 
-  const PARTICLE_COUNT = 3000;
+  // ----- Configuration -----
+  const PARTICLE_COUNT = 2000;
+  const RADIUS_MIN = 1.8;
+  const RADIUS_MAX = 4.5;
 
-  /* ----- Renderer ----- */
+  // ----- Renderer -----
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: true,
@@ -240,153 +203,139 @@ function initHero3D() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setClearColor(0x080808, 1);
 
-  /* ----- Scène + caméra ----- */
+  // ----- Scène + caméra -----
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(
     55, window.innerWidth / window.innerHeight, 0.1, 100
   );
   camera.position.set(0, 0, 5);
 
-  /* ----- Génération des positions (sphère & tore) ----- */
-  const spherePositions = new Float32Array(PARTICLE_COUNT * 3);
-  const torusPositions  = new Float32Array(PARTICLE_COUNT * 3);
-  const layers          = new Float32Array(PARTICLE_COUNT);
-  const sizes           = new Float32Array(PARTICLE_COUNT);
-  const randoms         = new Float32Array(PARTICLE_COUNT);
-
-  const RADIUS_SPHERE = 1.6;
-  const TORUS_R = 1.5;
-  const TORUS_r = 0.55;
+  // ----- Génération des positions :
+  //       nuage 3D sphérique avec 3 couches de profondeur -----
+  const positions = new Float32Array(PARTICLE_COUNT * 3);
+  const layers    = new Float32Array(PARTICLE_COUNT);
+  const sizes     = new Float32Array(PARTICLE_COUNT);
+  const randoms   = new Float32Array(PARTICLE_COUNT);
 
   for (let i = 0; i < PARTICLE_COUNT; i++) {
     const i3 = i * 3;
 
-    // Sphère uniforme
+    // Direction aléatoire uniforme sur la sphère
     const u = Math.random();
     const v = Math.random();
     const theta = 2 * Math.PI * u;
     const phi = Math.acos(2 * v - 1);
-    const layerOffset = (Math.random() - 0.5) * 0.3;
-    spherePositions[i3]     = (RADIUS_SPHERE + layerOffset) * Math.sin(phi) * Math.cos(theta);
-    spherePositions[i3 + 1] = (RADIUS_SPHERE + layerOffset) * Math.sin(phi) * Math.sin(theta);
-    spherePositions[i3 + 2] = (RADIUS_SPHERE + layerOffset) * Math.cos(phi);
 
-    // Tore paramétrique
-    const tu = Math.random() * Math.PI * 2;
-    const tv = Math.random() * Math.PI * 2;
-    const tOffset = (Math.random() - 0.5) * 0.15;
-    torusPositions[i3]     = (TORUS_R + (TORUS_r + tOffset) * Math.cos(tv)) * Math.cos(tu);
-    torusPositions[i3 + 1] = (TORUS_R + (TORUS_r + tOffset) * Math.cos(tv)) * Math.sin(tu);
-    torusPositions[i3 + 2] = (TORUS_r + tOffset) * Math.sin(tv);
+    // Rayon aléatoire dans une coque
+    const r = RADIUS_MIN + Math.pow(Math.random(), 0.7) * (RADIUS_MAX - RADIUS_MIN);
 
-    layers[i]  = Math.floor(Math.random() * 3);
-    sizes[i]   = 6 + Math.random() * 10;
+    positions[i3]     = r * Math.sin(phi) * Math.cos(theta);
+    positions[i3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+    positions[i3 + 2] = r * Math.cos(phi);
+
+    // Couche de profondeur (parallax)
+    layers[i] = Math.floor(Math.random() * 3); // 0, 1 ou 2
+
+    // Taille variable (PETITE : 1.5 à 4)
+    sizes[i] = 1.5 + Math.random() * 2.5;
+
+    // Seed aléatoire pour le shader
     randoms[i] = Math.random();
   }
 
-  /* ----- Geometry ----- */
+  // ----- Geometry -----
   const geometry = new THREE.BufferGeometry();
-  const initPos = new Float32Array(PARTICLE_COUNT * 3); // tous à 0,0,0
-  geometry.setAttribute('position',   new THREE.BufferAttribute(initPos, 3));
-  geometry.setAttribute('aSpherePos', new THREE.BufferAttribute(spherePositions, 3));
-  geometry.setAttribute('aTorusPos',  new THREE.BufferAttribute(torusPositions, 3));
-  geometry.setAttribute('aLayer',     new THREE.BufferAttribute(layers, 1));
-  geometry.setAttribute('aSize',      new THREE.BufferAttribute(sizes, 1));
-  geometry.setAttribute('aRandom',    new THREE.BufferAttribute(randoms, 1));
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('aLayer',   new THREE.BufferAttribute(layers, 1));
+  geometry.setAttribute('aSize',    new THREE.BufferAttribute(sizes, 1));
+  geometry.setAttribute('aRandom',  new THREE.BufferAttribute(randoms, 1));
 
-  /* ----- Shader Material ----- */
+  // ----- Shader Material -----
   const uniforms = {
-    uTime:      { value: 0 },
-    uMorph:     { value: 0 },
-    uReveal:    { value: 0 },
-    uMouse:     { value: new THREE.Vector2(0, 0) },
-    uPixel:     { value: renderer.getPixelRatio() },
-    uColdColor: { value: new THREE.Color('#4f8ef7') },
-    uWarmColor: { value: new THREE.Color('#7c3aed') },
+    uTime:   { value: 0 },
+    uReveal: { value: 0 },
+    uMouse:  { value: new THREE.Vector2(0, 0) },
+    uPixel:  { value: renderer.getPixelRatio() },
+    uColor:  { value: new THREE.Color('#7c3aed') },   // violet principal
+    uColor2: { value: new THREE.Color('#a78bfa') },   // violet clair
   };
 
   const vertexShader = /* glsl */`
     uniform float uTime;
-    uniform float uMorph;
     uniform float uReveal;
     uniform vec2  uMouse;
     uniform float uPixel;
 
-    attribute vec3  aSpherePos;
-    attribute vec3  aTorusPos;
     attribute float aLayer;
     attribute float aSize;
     attribute float aRandom;
 
-    varying float vDepth;
     varying float vRandom;
-
-    float easeOutCubic(float x) { return 1.0 - pow(1.0 - x, 3.0); }
+    varying float vDepth;
 
     void main() {
-      // Morph sphère ↔ tore
-      float morph = smoothstep(0.0, 1.0, uMorph);
-      vec3 morphedPos = mix(aSpherePos, aTorusPos, morph);
+      vec3 pos = position;
 
-      // Bruit organique
+      // Dérive organique : oscillation lente
       float n = aRandom * 6.2831;
-      vec3 noiseOffset = vec3(
-        sin(uTime * 0.6 + n)        * 0.06,
-        cos(uTime * 0.5 + n * 1.3)  * 0.06,
-        sin(uTime * 0.7 + n * 0.7)  * 0.06
-      );
-      morphedPos += noiseOffset;
+      pos.x += sin(uTime * 0.25 + n)        * 0.08;
+      pos.y += cos(uTime * 0.22 + n * 1.3)  * 0.08;
+      pos.z += sin(uTime * 0.28 + n * 0.7)  * 0.06;
 
-      // Reveal : explosion depuis (0,0,0)
-      float reveal = easeOutCubic(uReveal);
-      vec3 finalPos = mix(vec3(0.0), morphedPos, reveal);
+      // Parallax 3D selon la couche (3 vitesses différentes)
+      float layerSpeed = 0.04 + aLayer * 0.04;
+      pos.x += uMouse.x * layerSpeed;
+      pos.y += uMouse.y * layerSpeed;
 
-      // Parallax 3D selon la couche
-      float layerSpeed = 0.06 + aLayer * 0.05;
-      finalPos.x += uMouse.x * layerSpeed;
-      finalPos.y += uMouse.y * layerSpeed;
-
-      // Rotation lente globale
-      float rot = uTime * 0.08;
+      // Rotation très lente du nuage entier
+      float rot = uTime * 0.04;
       float cs = cos(rot);
       float sn = sin(rot);
-      vec3 rotatedPos = vec3(
-        finalPos.x * cs - finalPos.z * sn,
-        finalPos.y,
-        finalPos.x * sn + finalPos.z * cs
+      vec3 rotated = vec3(
+        pos.x * cs - pos.z * sn,
+        pos.y,
+        pos.x * sn + pos.z * cs
       );
 
-      vec4 mvPos = modelViewMatrix * vec4(rotatedPos, 1.0);
+      vec4 mvPos = modelViewMatrix * vec4(rotated, 1.0);
       gl_Position = projectionMatrix * mvPos;
 
-      // Taille selon Z
+      // Taille selon Z × reveal
       float dist = -mvPos.z;
-      gl_PointSize = aSize * (300.0 / dist) * uPixel * reveal;
+      gl_PointSize = aSize * (220.0 / dist) * uPixel * uReveal;
 
-      vDepth = clamp((rotatedPos.z + 2.0) * 0.25, 0.0, 1.0);
       vRandom = aRandom;
+      vDepth = clamp((rotated.z + 4.0) * 0.15, 0.0, 1.0);
     }
   `;
 
   const fragmentShader = /* glsl */`
-    uniform vec3  uColdColor;
-    uniform vec3  uWarmColor;
+    uniform vec3  uColor;
+    uniform vec3  uColor2;
     uniform float uTime;
+    uniform float uReveal;
 
-    varying float vDepth;
     varying float vRandom;
+    varying float vDepth;
 
     void main() {
       vec2 uv = gl_PointCoord - 0.5;
       float dist = length(uv);
+
+      // Disque doux + halo très léger
       float core = smoothstep(0.5, 0.0, dist);
-      float halo = smoothstep(0.5, 0.15, dist);
-      float alpha = core * 0.9 + halo * halo * 0.35;
+      float halo = smoothstep(0.5, 0.2, dist);
+      float alpha = core * 0.7 + halo * halo * 0.12;
       if (alpha < 0.01) discard;
-      vec3 color = mix(uColdColor, uWarmColor, vDepth);
-      float twinkle = 0.85 + 0.15 * sin(uTime * 2.0 + vRandom * 12.0);
+
+      // Variation subtile violet → violet clair
+      vec3 color = mix(uColor, uColor2, vDepth * 0.5);
+
+      // Twinkle léger
+      float twinkle = 0.85 + 0.15 * sin(uTime * 1.5 + vRandom * 12.0);
       color *= twinkle;
-      gl_FragColor = vec4(color, alpha);
+
+      gl_FragColor = vec4(color, alpha * uReveal);
     }
   `;
 
@@ -402,11 +351,13 @@ function initHero3D() {
   const points = new THREE.Points(geometry, material);
   scene.add(points);
 
-  /* ----- Post-processing ----- */
+  // ----- Post-processing : bloom TRÈS léger -----
   const renderScene = new RenderPass(scene, camera);
   const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
-    0.8, 0.4, 0.2
+    0.25,    // strength : très subtil
+    0.30,    // radius
+    0.85     // threshold : seuls les pixels les plus lumineux glow
   );
   const outputPass = new OutputPass();
   const composer = new EffectComposer(renderer);
@@ -416,14 +367,14 @@ function initHero3D() {
   composer.addPass(bloomPass);
   composer.addPass(outputPass);
 
-  /* ----- Souris (lerp pour adoucir) ----- */
+  // ----- Souris (lerp pour adoucir) -----
   const mouse = { x: 0, y: 0, tx: 0, ty: 0 };
   window.addEventListener('mousemove', (e) => {
     mouse.tx = (e.clientX / window.innerWidth) * 2 - 1;
     mouse.ty = -((e.clientY / window.innerHeight) * 2 - 1);
   });
 
-  /* ----- Pause hors viewport ----- */
+  // ----- Pause hors viewport -----
   let renderActive = true;
   const heroSection = document.querySelector('.hero');
   const heroObserver = new IntersectionObserver((entries) => {
@@ -431,40 +382,32 @@ function initHero3D() {
   }, { threshold: 0 });
   heroObserver.observe(heroSection);
 
-  /* ----- Boucle d'animation ----- */
+  // ----- Boucle d'animation -----
   const clock = new THREE.Clock();
   const startTime = performance.now();
-  const REVEAL_DURATION = 1500;       // 1.5s explosion
-  const MORPH_PERIOD = 8000;          // 8s pour un cycle sphère→tore→sphère
+  const REVEAL_DURATION = 2500;  // 2.5s de fade-in tout doux
 
   function animate() {
     requestAnimationFrame(animate);
     if (!renderActive) return;
 
-    const t = clock.getElapsedTime();
-    uniforms.uTime.value = t;
+    uniforms.uTime.value = clock.getElapsedTime();
 
-    // Reveal manuel (sans GSAP)
+    // Fade-in progressif (ease-out cubic)
     const elapsed = performance.now() - startTime;
-    const revealT = Math.min(1, elapsed / REVEAL_DURATION);
-    uniforms.uReveal.value = 1 - Math.pow(1 - revealT, 3); // cubic out
-
-    // Morphing sphère ↔ tore (sin oscillation)
-    const morphPhase = (elapsed % MORPH_PERIOD) / MORPH_PERIOD;
-    uniforms.uMorph.value = 0.5 - 0.5 * Math.cos(morphPhase * 2 * Math.PI);
+    const t = Math.min(1, elapsed / REVEAL_DURATION);
+    uniforms.uReveal.value = 1 - Math.pow(1 - t, 3);
 
     // Lerp souris
-    mouse.x += (mouse.tx - mouse.x) * 0.05;
-    mouse.y += (mouse.ty - mouse.y) * 0.05;
+    mouse.x += (mouse.tx - mouse.x) * 0.04;
+    mouse.y += (mouse.ty - mouse.y) * 0.04;
     uniforms.uMouse.value.set(mouse.x, mouse.y);
 
     composer.render();
   }
   animate();
-  threeRunning = true;
-  diag.set('3d', true, '3D running');
 
-  /* ----- Resize debounced ----- */
+  // ----- Resize debounced -----
   let resizeTimer;
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
@@ -488,16 +431,8 @@ try {
   initHero3D();
 } catch (e) {
   console.error('Three.js error:', e);
-  diag.set('3d', false, '3D running');
-  diag.error('Three.js : ' + e.message);
   if (canvas) canvas.style.display = 'none';
 }
 
 revealHeroText();
 hideLoader();
-
-// Cache le panneau de diag après 8s si tout est vert
-setTimeout(() => {
-  const allOk = !document.querySelector('#diag .ko') && !document.querySelector('#diag .err');
-  if (allOk) diag.hide();
-}, 8000);

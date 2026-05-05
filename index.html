@@ -27,11 +27,6 @@
 </head>
 <body>
 
-  <!-- ==================== PANNEAU DE DIAGNOSTIC ==================== -->
-  <!-- Affiche en direct le statut des libs. Se cache automatiquement
-       après 8s si tout est OK. Sinon il reste visible avec l'erreur. -->
-  <div id="diag"></div>
-
   <!-- ==================== LOADER ==================== -->
   <div class="loader" id="loader">
     <div class="loader-mark">SP</div>
@@ -85,7 +80,7 @@
           <span class="sep" aria-hidden="true">/</span>
           <span>Toulouse / La Rochelle</span>
           <span class="sep" aria-hidden="true">/</span>
-          <span>27&nbsp;sem. entreprise</span>
+          <span>12&nbsp;mois en alternance</span>
         </div>
       </div>
 
@@ -103,13 +98,13 @@
         <div class="photo-frame" id="photo-frame">
           <!--
             POUR AFFICHER TA PHOTO :
-              1. Place un fichier nommé EXACTEMENT "photo.jpg" à côté de index.html.
-              2. Format conseillé : portrait, 800x1000px, < 300 ko.
-              3. Si tu utilises un autre nom (Photo.jpg, photo.png, photo.webp),
-                 modifie src="photo.jpg" ci-dessous.
+              1. Place ton fichier dans le dossier assets/ avec le nom EXACT "photo.png"
+                 (donc chemin final : assets/photo.png).
+              2. Format conseillé : portrait, 800x1000px, < 500 ko.
+              3. Si tu utilises un autre format (.jpg, .webp), modifie src ci-dessous.
               4. Sans photo, la silhouette stylisée s'affiche automatiquement.
           -->
-          <img src="photo.jpg" alt="Soren Pigeau" class="photo-img" id="profile-photo" />
+          <img src="assets/photo.png" alt="Soren Pigeau" class="photo-img" id="profile-photo" />
           <svg class="photo-silhouette" viewBox="0 0 200 260" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <defs>
               <linearGradient id="silG" x1="0" y1="0" x2="1" y2="1">
@@ -152,21 +147,22 @@
       </div>
 
       <p class="search-lead">
-        Une alternance de <strong>12&nbsp;mois</strong> dans le cadre de ma 3<sup>e</sup>&nbsp;année
-        de BUT Informatique à l'IUT Toulouse, pour mettre en pratique mes compétences
-        et en acquérir de nouvelles dans un cadre professionnel exigeant.
+        Une alternance de <strong>12&nbsp;mois</strong>, de septembre&nbsp;2026 à septembre&nbsp;2027,
+        dans le cadre de ma 3<sup>e</sup>&nbsp;année de BUT Informatique à l'IUT Toulouse.
+        L'occasion de mettre en pratique mes compétences et d'en acquérir de nouvelles
+        dans un cadre professionnel exigeant.
       </p>
 
       <div class="search-cards">
         <article class="search-card" data-tilt>
           <h3>Période</h3>
-          <p class="card-big">01.09.2026<br />→ 25.06.2027</p>
-          <p class="card-small">Année universitaire 2026 / 2027</p>
+          <p class="card-big">Sept. 2026<br />→ Sept. 2027</p>
+          <p class="card-small">12 mois en alternance</p>
         </article>
         <article class="search-card" data-tilt>
           <h3>Rythme</h3>
-          <p class="card-big">~ 1 mois<br />en entreprise</p>
-          <p class="card-small">27 semaines en entreprise / 16 semaines à l'IUT</p>
+          <p class="card-big">Alternance<br />école / entreprise</p>
+          <p class="card-small">Selon le calendrier de l'IUT Toulouse</p>
         </article>
         <article class="search-card" data-tilt>
           <h3>Domaines</h3>
