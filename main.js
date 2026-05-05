@@ -237,8 +237,8 @@ function initBg3D() {
     // Couche de profondeur (parallax)
     layers[i] = Math.floor(Math.random() * 3);
 
-    // Taille TRÈS petite (0.6 à 1.6 multipliés par la perspective)
-    sizes[i] = 0.6 + Math.random() * 1.0;
+    // Taille petite (visible mais discret : 2 à 5 pixels typiquement)
+    sizes[i] = 1.0 + Math.random() * 1.8;
 
     // Seed aléatoire
     randoms[i] = Math.random();
@@ -301,10 +301,9 @@ function initBg3D() {
       vec4 mvPos = modelViewMatrix * vec4(rotated, 1.0);
       gl_Position = projectionMatrix * mvPos;
 
-      // Taille : MINUSCULE (1 à 3 pixels typiquement)
-      // Formule simple sans grosse multiplication par la perspective
+      // Taille : petite mais visible (typiquement 2 à 5 pixels)
       float dist = -mvPos.z;
-      gl_PointSize = aSize * uPixel * uReveal * (5.0 / dist);
+      gl_PointSize = aSize * uPixel * uReveal * (8.5 / dist);
 
       vRandom = aRandom;
       vDepth = clamp((rotated.z + 5.0) * 0.12, 0.0, 1.0);
