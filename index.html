@@ -28,9 +28,6 @@
 <body>
 
   <!-- ==================== CANVAS 3D D'ARRIÈRE-PLAN ==================== -->
-  <!-- Le canvas est en position fixed et couvre tout le site
-       (pas seulement le hero), pour que les points violets soient
-       visibles derrière toutes les sections au scroll. -->
   <canvas id="bg-canvas"></canvas>
 
   <!-- ==================== LOADER ==================== -->
@@ -100,14 +97,6 @@
 
       <div class="about-grid">
         <div class="photo-frame" id="photo-frame">
-          <!--
-            POUR AFFICHER TA PHOTO :
-              1. Place ton fichier dans le dossier assets/ avec le nom EXACT "photo.png"
-                 (donc chemin final : assets/photo.png).
-              2. Format conseillé : portrait, 800x1000px, < 500 ko.
-              3. Si tu utilises un autre format (.jpg, .webp), modifie src ci-dessous.
-              4. Sans photo, la silhouette stylisée s'affiche automatiquement.
-          -->
           <img src="assets/photo.png" alt="Soren Pigeau" class="photo-img" id="profile-photo" />
           <svg class="photo-silhouette" viewBox="0 0 200 260" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <defs>
@@ -128,10 +117,9 @@
             je me forme au développement, à l'analyse de données et à l'administration système.
           </p>
           <p>
-            Curieux et méthodique, j'aime comprendre comment les choses fonctionnent en profondeur,
-            du fonctionnement d'un algorithme jusqu'à l'architecture d'un réseau. Mes projets universitaires
-            m'ont permis de toucher à des univers variés : développement bas niveau en C et Ada, exploitation
-            de bases de données, mise en place d'infrastructures virtualisées.
+            Curieux et méthodique, j’aime comprendre les mécanismes en profondeur, qu’il s’agisse d’un algorithme ou de l’architecture d’un réseau. 
+            Mes projets universitaires m’ont permis d’explorer des domaines variés : 
+            développement bas niveau en C et Ada, gestion de bases de données, ou encore déploiement d’infrastructures virtualisées.
           </p>
           <p>
             Aujourd'hui, je cherche une alternance pour ma troisième année afin de mettre en pratique mes
@@ -237,7 +225,7 @@
         <article class="project" data-tilt>
           <span class="project-tag">Crypto · Bas niveau</span>
           <h3>Chiffrement de César en C</h3>
-          <p>Implémentation en C du chiffrement de César : programme permettant de chiffrer et déchiffrer un message en appliquant un décalage configurable sur l'alphabet.</p>
+          <p>Implémentation en C du chiffrement de César : programme permettant de chiffrer et de déchiffrer un message en appliquant un décalage configurable sur l'alphabet.</p>
           <ul class="project-stack"><li>C</li><li>Cryptographie</li></ul>
           <a class="project-link" href="https://github.com/Soren-Pigeau/projet-universitaire-Algorithme-de-chiffrement-Cesar" target="_blank" rel="noopener">Voir sur GitHub <span aria-hidden="true">→</span></a>
         </article>
@@ -346,7 +334,7 @@
             <div class="timeline-body">
               <h3>Vacataire au service courrier, DGFiP</h3>
               <p class="timeline-role">Direction générale des Finances publiques</p>
-              <p>Job d'été au service courrier des Impôts : tri, traitement et suivi du courrier entrant et sortant. Première immersion dans l'environnement administratif et confirmation de mon goût pour les missions structurées.</p>
+              <p> emploi saisonnier au sein du service courrier des Impôts : tri, traitement et suivi du courrier entrant et sortant. Première immersion dans l'environnement administratif et confirmation de mon goût pour les missions structurées.</p>
             </div>
           </li>
         </ol>
@@ -368,8 +356,7 @@
           </p>
           <p>
             Je suis disponible pour échanger par mail, téléphone, ou en visio.
-            N'hésitez pas à me contacter pour toute question, opportunité ou
-            simple discussion.
+            N'hésitez pas à me contacter pour toute question, opportunité.
           </p>
         </div>
 
