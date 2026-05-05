@@ -27,6 +27,12 @@
 </head>
 <body>
 
+  <!-- ==================== CANVAS 3D D'ARRIÈRE-PLAN ==================== -->
+  <!-- Le canvas est en position fixed et couvre tout le site
+       (pas seulement le hero), pour que les points violets soient
+       visibles derrière toutes les sections au scroll. -->
+  <canvas id="bg-canvas"></canvas>
+
   <!-- ==================== LOADER ==================== -->
   <div class="loader" id="loader">
     <div class="loader-mark">SP</div>
@@ -53,10 +59,8 @@
 
   <main id="top">
 
-    <!-- ==================== HERO 3D ==================== -->
+    <!-- ==================== HERO ==================== -->
     <section class="hero">
-      <canvas id="hero-canvas"></canvas>
-
       <div class="hero-inner">
         <p class="badge"><span class="dot"></span> Disponible · alternance rentrée 2026</p>
 
@@ -161,8 +165,8 @@
         </article>
         <article class="search-card" data-tilt>
           <h3>Rythme</h3>
-          <p class="card-big">Alternance<br />école / entreprise</p>
-          <p class="card-small">Selon le calendrier de l'IUT Toulouse</p>
+          <p class="card-big">~ 1 mois<br />/ 1 mois</p>
+          <p class="card-small">27 semaines en entreprise · 16 semaines à l'IUT</p>
         </article>
         <article class="search-card" data-tilt>
           <h3>Domaines</h3>

@@ -1,15 +1,14 @@
 /* =========================================================
    SOREN PIGEAU · PORTFOLIO 3D
    main.js · ES module
-   Hero 3D : nuage de petits points violets dérivant doucement
-   en arrière-plan, avec parallax 3D à la souris.
+
+   3D minimaliste : nuage de points violets minuscules
+   en arrière-plan de TOUT le site. Pas de bloom, pas de
+   halo, juste des étoiles violettes très discrètes qui
+   dérivent doucement avec parallax à la souris.
    ========================================================= */
 
 import * as THREE from 'three';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 /* =========================================================
    ANNÉE FOOTER
@@ -87,7 +86,7 @@ const revealObserver = new IntersectionObserver((entries, obs) => {
 revealTargets.forEach((el) => revealObserver.observe(el));
 
 /* =========================================================
-   COMPÉTENCES : effet de vague (stagger via setTimeout)
+   COMPÉTENCES : effet de vague (stagger)
    ========================================================= */
 const skillsObserver = new IntersectionObserver((entries, obs) => {
   entries.forEach((entry) => {
@@ -171,26 +170,28 @@ function revealHeroText() {
 }
 
 /* =========================================================
-   HERO 3D · Three.js
-   Nuage de petits points violets en arrière-plan.
-   Pas d'explosion, pas de morphing voyant : juste des points
-   qui dérivent doucement avec parallax à la souris.
+   CANVAS 3D · ARRIÈRE-PLAN MINIMALISTE DU SITE ENTIER
+
+   - Petits points violets (1 à 3 pixels)
+   - Pas de bloom, pas de halo : juste des points nets
+   - Le canvas est position:fixed donc visible derrière TOUTES
+     les sections, pas seulement le hero
    ========================================================= */
-const canvas = document.getElementById('hero-canvas');
+const canvas = document.getElementById('bg-canvas');
 
 const testCanvas = document.createElement('canvas');
 const webglOK = !!(testCanvas.getContext('webgl2') || testCanvas.getContext('webgl'));
 
-function initHero3D() {
+function initBg3D() {
   if (!webglOK) {
     if (canvas) canvas.style.display = 'none';
     return;
   }
 
   // ----- Configuration -----
-  const PARTICLE_COUNT = 2000;
-  const RADIUS_MIN = 1.8;
-  const RADIUS_MAX = 4.5;
+  const PARTICLE_COUNT = 1500;
+  const RADIUS_MIN = 2.0;
+  const RADIUS_MAX = 5.5;
 
   // ----- Renderer -----
   const renderer = new THREE.WebGLRenderer({
@@ -226,20 +227,20 @@ function initHero3D() {
     const theta = 2 * Math.PI * u;
     const phi = Math.acos(2 * v - 1);
 
-    // Rayon aléatoire dans une coque
-    const r = RADIUS_MIN + Math.pow(Math.random(), 0.7) * (RADIUS_MAX - RADIUS_MIN);
+    // Rayon aléatoire (biaisé vers l'extérieur pour aérer le centre)
+    const r = RADIUS_MIN + Math.pow(Math.random(), 0.6) * (RADIUS_MAX - RADIUS_MIN);
 
     positions[i3]     = r * Math.sin(phi) * Math.cos(theta);
     positions[i3 + 1] = r * Math.sin(phi) * Math.sin(theta);
     positions[i3 + 2] = r * Math.cos(phi);
 
     // Couche de profondeur (parallax)
-    layers[i] = Math.floor(Math.random() * 3); // 0, 1 ou 2
+    layers[i] = Math.floor(Math.random() * 3);
 
-    // Taille variable (PETITE : 1.5 à 4)
-    sizes[i] = 1.5 + Math.random() * 2.5;
+    // Taille TRÈS petite (0.6 à 1.6 multipliés par la perspective)
+    sizes[i] = 0.6 + Math.random() * 1.0;
 
-    // Seed aléatoire pour le shader
+    // Seed aléatoire
     randoms[i] = Math.random();
   }
 
@@ -250,14 +251,14 @@ function initHero3D() {
   geometry.setAttribute('aSize',    new THREE.BufferAttribute(sizes, 1));
   geometry.setAttribute('aRandom',  new THREE.BufferAttribute(randoms, 1));
 
-  // ----- Shader Material -----
+  // ----- Shader Material : minimal, points pixel-perfect -----
   const uniforms = {
     uTime:   { value: 0 },
     uReveal: { value: 0 },
     uMouse:  { value: new THREE.Vector2(0, 0) },
     uPixel:  { value: renderer.getPixelRatio() },
-    uColor:  { value: new THREE.Color('#7c3aed') },   // violet principal
-    uColor2: { value: new THREE.Color('#a78bfa') },   // violet clair
+    uColor:  { value: new THREE.Color('#7c3aed') },
+    uColor2: { value: new THREE.Color('#a78bfa') },
   };
 
   const vertexShader = /* glsl */`
@@ -276,19 +277,19 @@ function initHero3D() {
     void main() {
       vec3 pos = position;
 
-      // Dérive organique : oscillation lente
+      // Dérive organique très lente
       float n = aRandom * 6.2831;
-      pos.x += sin(uTime * 0.25 + n)        * 0.08;
-      pos.y += cos(uTime * 0.22 + n * 1.3)  * 0.08;
-      pos.z += sin(uTime * 0.28 + n * 0.7)  * 0.06;
+      pos.x += sin(uTime * 0.20 + n)        * 0.06;
+      pos.y += cos(uTime * 0.18 + n * 1.3)  * 0.06;
+      pos.z += sin(uTime * 0.22 + n * 0.7)  * 0.04;
 
-      // Parallax 3D selon la couche (3 vitesses différentes)
-      float layerSpeed = 0.04 + aLayer * 0.04;
+      // Parallax 3D selon la couche
+      float layerSpeed = 0.03 + aLayer * 0.03; // 0.03 / 0.06 / 0.09
       pos.x += uMouse.x * layerSpeed;
       pos.y += uMouse.y * layerSpeed;
 
-      // Rotation très lente du nuage entier
-      float rot = uTime * 0.04;
+      // Rotation très lente du nuage
+      float rot = uTime * 0.025;
       float cs = cos(rot);
       float sn = sin(rot);
       vec3 rotated = vec3(
@@ -300,12 +301,13 @@ function initHero3D() {
       vec4 mvPos = modelViewMatrix * vec4(rotated, 1.0);
       gl_Position = projectionMatrix * mvPos;
 
-      // Taille selon Z × reveal
+      // Taille : MINUSCULE (1 à 3 pixels typiquement)
+      // Formule simple sans grosse multiplication par la perspective
       float dist = -mvPos.z;
-      gl_PointSize = aSize * (220.0 / dist) * uPixel * uReveal;
+      gl_PointSize = aSize * uPixel * uReveal * (5.0 / dist);
 
       vRandom = aRandom;
-      vDepth = clamp((rotated.z + 4.0) * 0.15, 0.0, 1.0);
+      vDepth = clamp((rotated.z + 5.0) * 0.12, 0.0, 1.0);
     }
   `;
 
@@ -322,17 +324,15 @@ function initHero3D() {
       vec2 uv = gl_PointCoord - 0.5;
       float dist = length(uv);
 
-      // Disque doux + halo très léger
-      float core = smoothstep(0.5, 0.0, dist);
-      float halo = smoothstep(0.5, 0.2, dist);
-      float alpha = core * 0.7 + halo * halo * 0.12;
+      // Disque doux SANS halo pour des points nets et minimalistes
+      float alpha = smoothstep(0.5, 0.0, dist) * 0.9;
       if (alpha < 0.01) discard;
 
       // Variation subtile violet → violet clair
-      vec3 color = mix(uColor, uColor2, vDepth * 0.5);
+      vec3 color = mix(uColor, uColor2, vDepth * 0.4);
 
-      // Twinkle léger
-      float twinkle = 0.85 + 0.15 * sin(uTime * 1.5 + vRandom * 12.0);
+      // Twinkle léger (scintillement discret)
+      float twinkle = 0.8 + 0.2 * sin(uTime * 1.2 + vRandom * 12.0);
       color *= twinkle;
 
       gl_FragColor = vec4(color, alpha * uReveal);
@@ -345,27 +345,14 @@ function initHero3D() {
     fragmentShader,
     transparent: true,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
+    // PAS de AdditiveBlending : ça rendait les points "lumineux"
+    // qui s'additionnaient quand ils se superposaient. NormalBlending
+    // garde des points discrets.
+    blending: THREE.NormalBlending,
   });
 
   const points = new THREE.Points(geometry, material);
   scene.add(points);
-
-  // ----- Post-processing : bloom TRÈS léger -----
-  const renderScene = new RenderPass(scene, camera);
-  const bloomPass = new UnrealBloomPass(
-    new THREE.Vector2(window.innerWidth, window.innerHeight),
-    0.25,    // strength : très subtil
-    0.30,    // radius
-    0.85     // threshold : seuls les pixels les plus lumineux glow
-  );
-  const outputPass = new OutputPass();
-  const composer = new EffectComposer(renderer);
-  composer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  composer.setSize(window.innerWidth, window.innerHeight);
-  composer.addPass(renderScene);
-  composer.addPass(bloomPass);
-  composer.addPass(outputPass);
 
   // ----- Souris (lerp pour adoucir) -----
   const mouse = { x: 0, y: 0, tx: 0, ty: 0 };
@@ -374,18 +361,16 @@ function initHero3D() {
     mouse.ty = -((e.clientY / window.innerHeight) * 2 - 1);
   });
 
-  // ----- Pause hors viewport -----
+  // ----- Pause quand l'onglet est masqué -----
   let renderActive = true;
-  const heroSection = document.querySelector('.hero');
-  const heroObserver = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => { renderActive = entry.isIntersecting; });
-  }, { threshold: 0 });
-  heroObserver.observe(heroSection);
+  document.addEventListener('visibilitychange', () => {
+    renderActive = !document.hidden;
+  });
 
   // ----- Boucle d'animation -----
   const clock = new THREE.Clock();
   const startTime = performance.now();
-  const REVEAL_DURATION = 2500;  // 2.5s de fade-in tout doux
+  const REVEAL_DURATION = 2500;
 
   function animate() {
     requestAnimationFrame(animate);
@@ -393,7 +378,7 @@ function initHero3D() {
 
     uniforms.uTime.value = clock.getElapsedTime();
 
-    // Fade-in progressif (ease-out cubic)
+    // Fade-in progressif
     const elapsed = performance.now() - startTime;
     const t = Math.min(1, elapsed / REVEAL_DURATION);
     uniforms.uReveal.value = 1 - Math.pow(1 - t, 3);
@@ -403,7 +388,8 @@ function initHero3D() {
     mouse.y += (mouse.ty - mouse.y) * 0.04;
     uniforms.uMouse.value.set(mouse.x, mouse.y);
 
-    composer.render();
+    // Rendu direct (pas de post-processing, pas de bloom)
+    renderer.render(scene, camera);
   }
   animate();
 
@@ -417,8 +403,6 @@ function initHero3D() {
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
-      composer.setSize(w, h);
-      bloomPass.setSize(w, h);
       uniforms.uPixel.value = renderer.getPixelRatio();
     }, 150);
   });
@@ -428,7 +412,7 @@ function initHero3D() {
    DÉMARRAGE
    ========================================================= */
 try {
-  initHero3D();
+  initBg3D();
 } catch (e) {
   console.error('Three.js error:', e);
   if (canvas) canvas.style.display = 'none';
