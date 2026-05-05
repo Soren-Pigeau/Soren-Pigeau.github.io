@@ -12,18 +12,42 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
-  <!-- Importmap : Three.js + addons + GSAP + Lenis + Simplex-noise -->
+  <!-- Importmap : Three.js (unpkg) + GSAP/Lenis/simplex-noise (esm.sh) -->
+  <!-- esm.sh résout proprement les exports map npm (gsap/ScrollTrigger, etc.) -->
   <script type="importmap">
   {
     "imports": {
-      "three":           "https://unpkg.com/three@0.160.0/build/three.module.js",
-      "three/addons/":   "https://unpkg.com/three@0.160.0/examples/jsm/",
-      "gsap":            "https://cdn.jsdelivr.net/npm/gsap@3.12.5/+esm",
-      "gsap/ScrollTrigger": "https://cdn.jsdelivr.net/npm/gsap@3.12.5/ScrollTrigger.js/+esm",
-      "lenis":           "https://cdn.jsdelivr.net/npm/lenis@1.0.42/+esm",
-      "simplex-noise":   "https://cdn.jsdelivr.net/npm/simplex-noise@4.0.3/+esm"
+      "three":              "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/":      "https://unpkg.com/three@0.160.0/examples/jsm/",
+      "gsap":               "https://esm.sh/gsap@3.12.5",
+      "gsap/ScrollTrigger": "https://esm.sh/gsap@3.12.5/ScrollTrigger",
+      "lenis":              "https://esm.sh/lenis@1.0.42",
+      "simplex-noise":      "https://esm.sh/simplex-noise@4.0.3"
     }
   }
+  </script>
+
+  <!-- Sécurité : si le module JS plante (CDN bloqué, erreur shader, etc.),
+       le loader disparaît quand même au bout de 5s pour ne jamais bloquer
+       l'utilisateur sur la page de chargement. -->
+  <script>
+    setTimeout(() => {
+      const l = document.getElementById('loader');
+      if (l && !l.classList.contains('is-hidden')) {
+        l.classList.add('is-hidden');
+        // Affiche aussi les éléments du hero qui auraient dû être animés par GSAP
+        document.querySelectorAll('.hero-title .char, .hero-title .period').forEach(el => {
+          el.style.transform = 'translateY(0)';
+        });
+        ['.badge', '.hero-tagline', '.hero-cta', '.hero-meta', '#scroll-indicator'].forEach(sel => {
+          document.querySelectorAll(sel).forEach(el => {
+            el.style.opacity = '1';
+            el.style.transform = 'none';
+          });
+        });
+        console.warn('⚠️ Module JS lent ou en erreur — fallback de chargement déclenché. Ouvre la console pour voir l\'erreur.');
+      }
+    }, 5000);
   </script>
 
   <style>
@@ -539,7 +563,7 @@
       transition: transform 0.4s cubic-bezier(.2,.8,.2,1);
       overflow: hidden;
     }
-    /* Bordure dégradée animée (technique : 2 backgrounds, mask) */
+    /* Bordure dégradée animée (technique : 2 backgrounds + mask) */
     .search-card::before {
       content: '';
       position: absolute;
@@ -547,7 +571,12 @@
       border-radius: 16px;
       padding: 1px;
       background: linear-gradient(135deg, var(--glass-border), var(--glass-border));
-      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask:
+        linear-gradient(#fff, #fff) content-box,
+        linear-gradient(#fff, #fff);
+              mask:
+        linear-gradient(#fff, #fff) content-box,
+        linear-gradient(#fff, #fff);
       -webkit-mask-composite: xor;
               mask-composite: exclude;
       transition: background 0.4s ease;
@@ -595,7 +624,7 @@
     }
 
     /* =========================================================
-       PROJETS  tilt 3D
+       PROJETS — tilt 3D
        ========================================================= */
     .projects-intro {
       font-size: 1.05rem;
@@ -1498,15 +1527,23 @@
     });
 
     // ============================================================
-    //          HERO 3D — Three.js
+    //          HERO 3D — Three.js (try/catch pour robustesse)
     // ============================================================
     const canvas = document.getElementById('hero-canvas');
     const heroSection = document.querySelector('.hero');
 
+    let uniforms = null;        // partagé avec startIntro()
+    let composer = null;
+    let bloomPass = null;
+    let renderer = null;
+    let camera = null;
+    let threeReady = false;
+
+    try {
     const PARTICLE_COUNT = 3000;
 
     // ----- Renderer
-    const renderer = new THREE.WebGLRenderer({
+    renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
       alpha: true,
@@ -1518,7 +1555,7 @@
 
     // ----- Scène + caméra
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(
+    camera = new THREE.PerspectiveCamera(
       55, window.innerWidth / window.innerHeight, 0.1, 100
     );
     camera.position.set(0, 0, 5);
@@ -1596,7 +1633,7 @@
     //              perspective, bruit organique
     //   - Fragment : disque + halo, couleur Z (bleu→violet)
     // ============================================================
-    const uniforms = {
+    const uniformsLocal = {
       uTime:    { value: 0 },
       uMorph:   { value: 0 },      // 0 = sphère, 1 = tore
       uReveal:  { value: 0 },      // 0 = centre, 1 = position finale
@@ -1605,6 +1642,7 @@
       uColdColor: { value: new THREE.Color('#4f8ef7') },
       uWarmColor: { value: new THREE.Color('#7c3aed') },
     };
+    uniforms = uniformsLocal;
 
     const vertexShader = /* glsl */`
       uniform float uTime;
@@ -1719,7 +1757,7 @@
     //  POST-PROCESSING — EffectComposer + UnrealBloomPass
     // ============================================================
     const renderScene = new RenderPass(scene, camera);
-    const bloomPass = new UnrealBloomPass(
+    bloomPass = new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),
       0.8,   // strength
       0.4,   // radius
@@ -1727,7 +1765,7 @@
     );
     const outputPass = new OutputPass();
 
-    const composer = new EffectComposer(renderer);
+    composer = new EffectComposer(renderer);
     composer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     composer.setSize(window.innerWidth, window.innerHeight);
     composer.addPass(renderScene);
@@ -1777,6 +1815,13 @@
     }, 150);
     window.addEventListener('resize', onResize);
 
+    threeReady = true;
+    } catch (err) {
+      console.error('⚠️ Three.js a échoué — la page reste fonctionnelle sans le hero 3D :', err);
+      // Fond noir uni en fallback (déjà dans le CSS)
+      if (canvas) canvas.style.display = 'none';
+    }
+
     // ============================================================
     //          SÉQUENCE DE CHARGEMENT — révélation
     //   1. Loader fade out
@@ -1793,12 +1838,14 @@
         document.getElementById('loader').classList.add('is-hidden');
       }});
 
-      // 2. Explosion particules — 1.5s cubic out
-      tl.to(uniforms.uReveal, {
-        value: 1,
-        duration: 1.5,
-        ease: 'power2.out',
-      }, 0.1);
+      // 2. Explosion particules — seulement si Three.js a chargé
+      if (threeReady && uniforms) {
+        tl.to(uniforms.uReveal, {
+          value: 1,
+          duration: 1.5,
+          ease: 'power2.out',
+        }, 0.1);
+      }
 
       // 3. Lettres du titre — stagger
       tl.to('.hero-title .char', {
@@ -1820,15 +1867,17 @@
       tl.to('.hero-meta',    { opacity: 1, duration: 0.9 }, 1.4);
       tl.to('#scroll-indicator', { opacity: 1, duration: 0.8 }, 1.8);
 
-      // 5. Morphing sphère ↔ tore en boucle infinie
-      gsap.to(uniforms.uMorph, {
-        value: 1,
-        duration: 4,
-        ease: 'sine.inOut',
-        repeat: -1,
-        yoyo: true,
-        delay: 2,
-      });
+      // 5. Morphing sphère ↔ tore en boucle infinie (si 3D OK)
+      if (threeReady && uniforms) {
+        gsap.to(uniforms.uMorph, {
+          value: 1,
+          duration: 4,
+          ease: 'sine.inOut',
+          repeat: -1,
+          yoyo: true,
+          delay: 2,
+        });
+      }
     }
 
     // Lancer l'intro quand tout est prêt
